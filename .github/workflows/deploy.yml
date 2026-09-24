@@ -53,7 +53,7 @@ jobs:
           <meta charset="utf-8">
           <h1>play-app $APP_VERSION</h1>
           <p>play-lib $LIB_VERSION</p>
-          <p>触发方式：${{ github.event_name
+          <p>触发方式：${{ github.event_name }}</p>
           <p>运行结果：$RESULT</p>
           <p>部署时间：$(date -u)</p>
           EOF
@@ -67,7 +67,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
