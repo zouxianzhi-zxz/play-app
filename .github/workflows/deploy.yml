@@ -1,0 +1,50 @@
+name: Deploy
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write            # 允许发布到 Pages
+  id-token: write         # deploy-pages 用它向 GitHub 证明身份
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 下载 play-lib
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release download "$(cat lib-version.txt)" -R zouxianzhi-zxz/play-lib -p '*.zip'
+          unzip play-lib-*.zip
+
+      - name: 生成网页
+        run: |
+          mkdir site
+          RESULT=$(python3 app.py)
+          cat > site/index.html <<EOF
+          <meta charset="utf-8">
+          <h1>play-app ${{ github.ref_name }}</h1>
+          <p>play-lib $(cat lib-version.txt)</p>
+          <p>运行结果：$RESULT</p>
+          <p>部署时间：$(date -u)</p>
+          EOF
+
+      - uses: actions/upload-pages-artifact@v3   # 把 site/ 打包交给 Pages
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:                   # 部署目标，下面第 2 步会解释
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4            # 真正把网页发布上线
