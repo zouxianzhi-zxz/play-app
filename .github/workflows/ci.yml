@@ -1,0 +1,23 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:             # 加个按钮，方便直接运行
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 下载 play-lib
+        env:
+          GH_TOKEN: ${{ github.token }}   # play-lib 是公开仓库，默认令牌就能读
+        run: |
+          LIB_VERSION=$(cat lib-version.txt)
+          echo "使用 play-lib $LIB_VERSION"
+          gh release download "$LIB_VERSION" -R zouxianzhi-zxz/play-lib -p '*.zip'
+          unzip play-lib-*.zip            # 解压出 calc.py
+
+      - run: python3 app.py
