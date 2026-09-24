@@ -4,8 +4,15 @@ on:
   push:
     tags: ['v*']
   workflow_dispatch:
-  repository_dispatch:             # 新增：收到别的仓库发来的消息
-    types: [lib-released]          # 只响应这个消息名
+    inputs:                          # 新增：两个参数，给总控传版本号
+      lib_version:
+        description: "用哪个 lib 版本（留空 = lib-version.txt）"
+        required: false
+      app_version:
+        description: "网页上显示的 app 版本（留空 = 分支或 tag 名）"
+        required: false
+  repository_dispatch:
+    types: [lib-released]
 
 permissions:
   contents: read
@@ -18,13 +25,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: 决定用哪个 lib 版本
+      - name: 决定版本
         env:
-          PAYLOAD_LIB: ${{ github.event.client_payload.lib_version }}   # 消息里带过来的版本
+          INPUT_LIB: ${{ inputs.lib_version }}
+          PAYLOAD_LIB: ${{ github.event.client_payload.lib_version }}
+          INPUT_APP: ${{ inputs.app_version }}
         run: |
-          LIB_VERSION="${PAYLOAD_LIB:-$(cat lib-version.txt)}"   # 消息里有就用消息的，没有就用文件里的
-          echo "使用 play-lib $LIB_VERSION"
-          echo "LIB_VERSION=$LIB_VERSION" >> "$GITHUB_ENV"         # 让后面的 step 也能用这个变量
+          # 优先级：按钮参数 > 消息里的版本 > lib-version.txt
+          LIB_VERSION="${INPUT_LIB:-${PAYLOAD_LIB:-$(cat lib-version.txt)}}"
+          APP_VERSION="${INPUT_APP:-$GITHUB_REF_NAME}"
+          echo "lib=$LIB_VERSION app=$APP_VERSION"
+          echo "LIB_VERSION=$LIB_VERSION" >> "$GITHUB_ENV"
+          echo "APP_VERSION=$APP_VERSION" >> "$GITHUB_ENV"
 
       - name: 下载 play-lib
         env:
@@ -39,9 +51,9 @@ jobs:
           RESULT=$(python3 app.py)
           cat > site/index.html <<EOF
           <meta charset="utf-8">
-          <h1>play-app ${{ github.ref_name }}</h1>
+          <h1>play-app $APP_VERSION</h1>
           <p>play-lib $LIB_VERSION</p>
-          <p>触发方式：${{ github.event_name }}</p>
+          <p>触发方式：${{ github.event_name
           <p>运行结果：$RESULT</p>
           <p>部署时间：$(date -u)</p>
           EOF
